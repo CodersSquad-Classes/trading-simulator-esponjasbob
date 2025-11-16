@@ -10,7 +10,16 @@ On this challenge, you're implementing a Continuos Limit Order Book (CLOB). Buye
 
 ## How to build and run
 
-_ADD YOUR INSTRUCTIONS HERE_
+### Compile
+
+```
+g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Order.cpp LimitOrderBook.cpp -o orderbook
+```
+
+### Run
+```
+./orderbook
+```
 
 
 ## Deliverables
