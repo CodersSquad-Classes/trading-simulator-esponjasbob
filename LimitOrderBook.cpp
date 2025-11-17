@@ -83,11 +83,11 @@ void LimitOrderBook::printBook() const {
         << " | "
         << left << setw(24) << "ASKS (Sell Orders)" << RESET << "\n";
 
-    cout << left << setw(12) << "Price"
-        << left << setw(12) << "Qty"
-        << " | "
+    cout << left << setw(12) << "Shares"
         << left << setw(12) << "Price"
-        << left << setw(12) << "Qty" << "\n";
+        << " | "
+        << left << setw(12) << "Shares"
+        << left << setw(12) << "Price" << "\n";
 
     cout << string(24, '-') << "-+-" << string(24, '-') << "\n";
 
@@ -97,8 +97,8 @@ void LimitOrderBook::printBook() const {
         if (i < static_cast<int>(topBuys.size())) {
             const auto& ob = topBuys[i];
             cout << GREEN
-                 << left << setw(12) << fixed << setprecision(2) << ob.price
-                 << left << setw(12) << ob.shares
+                 << left << setw(12) << fixed << setprecision(2) << ob.shares
+                 << left << setw(12) << ob.price
                  << RESET;
         } else {
             cout << left << setw(12) << "-"
@@ -111,8 +111,8 @@ void LimitOrderBook::printBook() const {
         if (i < static_cast<int>(topSells.size())) {
             const auto& oa = topSells[i];
             cout << RED
-                 << left << setw(12) << fixed << setprecision(2) << oa.price
-                 << left << setw(12) << oa.shares
+                 << left << setw(12) << fixed << setprecision(2) << oa.shares
+                 << left << setw(12) << oa.price
                  << RESET;
         } else {
             cout << left << setw(12) << "-"

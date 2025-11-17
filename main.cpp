@@ -1,4 +1,5 @@
 #include <iostream>
+#include <limits> // For numeric_limits
 #include "LimitOrderBook.h"
 
 using namespace std;
