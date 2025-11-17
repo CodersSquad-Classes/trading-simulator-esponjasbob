@@ -163,7 +163,7 @@ Comandos dentro del programa:
 	 - Resultado: no hay trade; bestBid=100.00, bestAsk=101.00.
 
 2) Insertar una venta que SÍ cruce parcial:
-	 - Ventas: 99.50 x 3 frente a Buy 100.00 x 10
+	 - Ventas: Sell 99.50 x 3 frente a Buy 100.00 x 10
 	 - Resultado: TRADE de 3 @ 99.50; queda Buy 100.00 x 7.
 
 3) Empate por precio (mismo nivel) y prioridad por tiempo:
@@ -174,11 +174,13 @@ Comandos dentro del programa:
 
 ## Conclusiones y Aprendizajes
 
-- Ricardo:
+- **Ricardo**: 
+
+En este projecto aprendí a simular un *matching engine* para un libro de órdenes continua, utilizando como principal característica *priority queues*. Para hacer el programa más efectivo, también aprendí de ciertas "costumbres" para organizar mejor los archivos tanto `.cpp` como `.h`. Por último, aprendí qué son los libros de órdenes y cómo funcionan en el mundo del intercambio de bolsas. Concluyo, que esta práctica fue una buena manera para visualizar las colas con prioridad ya que las órdenes de intercambio se organizan de acuerdo a alguna prioridad, así garantizando el funcionamiento correcto de los libros de órdenes.
+
+- **Isaac**:
 
 
-- Isaac:
-	- 
 
 ## Trabajo futuro
 
