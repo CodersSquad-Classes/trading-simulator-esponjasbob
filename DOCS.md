@@ -105,7 +105,7 @@ El `main.cpp` limpia la pantalla en cada ciclo y dibuja el libro antes de solici
 - `class LimitOrderBook` (`LimitOrderBook.h` / `.cpp`):
 	- `addBuy(price, qty)` y `addSell(price, qty)`: insertan y llaman a `match()`.
 	- `match()`: ejecuta mientras haya cruce; maneja fills parciales y reinserta remanentes; imprime los trades en formato `TRADE: <qty> @ <price> (Buy seq X, Sell seq Y)`.
-	- `printBook() const`: muestra los top 10 niveles por lado, con columnas `Price | Qty | Seq` y colores ANSI.
+	- `printBook() const`: muestra los top 10 niveles por lado, con columnas `Price | Qty` y colores ANSI.
 
 - `main.cpp`:
 	- Bucle principal: limpia pantalla, dibuja el libro, muestra menú y lee comandos.
