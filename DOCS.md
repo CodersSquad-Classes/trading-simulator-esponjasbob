@@ -175,12 +175,10 @@ Comandos dentro del programa:
 ## Conclusiones y Aprendizajes
 
 - Ricardo:
-	- Comprendí cómo los comparadores personalizados en `priority_queue` implementan la prioridad precio-tiempo de forma directa y eficiente.
-	- Practiqué el manejo de fills parciales y la reinserción de remanentes, evitando perder el orden temporal (`seq`).
+
 
 - Isaac:
-	- Aprendí a construir una UI simple “en tiempo real” en la terminal con códigos ANSI, manteniendo entrada manual.
-	- Reforcé la noción de separar modelo (Order), lógica (LimitOrderBook) y vista (printBook/dashboard) para claridad y mantenibilidad.
+	- 
 
 ## Trabajo futuro
 
