@@ -180,11 +180,5 @@ En este projecto aprendí a simular un *matching engine* para un libro de órden
 
 - **Isaac**:
 
+En este proyecto aprendí de forma práctica cómo funciona un limit order book con prioridad precio–tiempo. Implementamos el matching con `std::priority_queue` y comparadores personalizados, lo que nos obligó a elegir y entender bien las estructuras de datos necesarias y a manejar fills parciales sin romper el orden temporal. También construimos un dashboard en la terminal con colores para visualizar en tiempo real bids y asks, algo que no había hecho antes. Me llevo la satisfacción de haber simulado, con código simple y claro, el funcionamiento de un CLOB real.
 
-
-## Trabajo futuro
-
-- Multi-símbolo: gestionar varios libros (uno por ticker) con un `unordered_map`.
-- Validaciones de entrada y manejo de errores (precios/cantidades inválidos).
-- Entrada no bloqueante y/o mejor interacción en tiempo real (por ejemplo, `ncurses`).
-- Persistencia o logging de trades para análisis posterior.
