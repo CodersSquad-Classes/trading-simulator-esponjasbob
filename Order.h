@@ -2,40 +2,33 @@
 #define ORDER_H
 
 class Order {
-    
-    public: // Member properties
+public:
     int shares;
     double price;
-    int seq; // Order's sequence number
+    int seq;
+    static int counter;
 
-    static int counter; // Counter that keeps track of how many orders have been made, shared globally
-
-    // Constructor for Order
-    Order(double p, int qty) {
+    Order(double p = 0, int q = 0) {
         price = p;
-        shares = qty;
+        shares = q;
         seq = counter++;
     }
 };
 
-// --------------- Definition of comparators ---------------
-
 struct BuyComparator {
-    bool operator()(const Order& a, const Order&b) const {
-        if (a.price != b.price) {
-            return a.price < b.price; // Highest price first
-        }
-        return a.seq > b.seq;         // Earliest order placed second
+    bool operator()(const Order& a, const Order& b) const {
+        if (a.price != b.price)
+            return a.price < b.price;
+        return a.seq > b.seq;
     }
 };
 
 struct SellComparator {
-    bool operator()(const Order& a, const Order&b) const {
-        if (a.price != b.price) {
-            return a.price > b.price; // Lowest price first
-        }
-        return a.seq > b.seq;         // Earliest order placed second
+    bool operator()(const Order& a, const Order& b) const {
+        if (a.price != b.price)
+            return a.price > b.price;
+        return a.seq > b.seq;
     }
 };
 
-#endif // ORDER_H
+#endif

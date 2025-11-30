@@ -1,122 +1,103 @@
 #include "LimitOrderBook.h"
 #include <iostream>
 #include <iomanip>
-#include <vector>
 using namespace std;
 
 void LimitOrderBook::addBuy(double price, int quantity) {
-    buy_orders.emplace(price, quantity); // Dynamically construct object and sort automatically within the queue
+    buy_orders.emplace(price, quantity);
     match();
 }
 
 void LimitOrderBook::addSell(double price, int quantity) {
-    sell_orders.emplace(price, quantity); // Dynamically construct object and sort automatically within the queue
+    sell_orders.emplace(price, quantity);
     match();
+}
+
+double LimitOrderBook::getSpread() const {
+    if (buy_orders.empty() || sell_orders.empty()) return 0;
+    return sell_orders.top().price - buy_orders.top().price;
 }
 
 void LimitOrderBook::match() {
     while (!buy_orders.empty() && !sell_orders.empty()) {
+
         Order buy = buy_orders.top();
         Order sell = sell_orders.top();
 
-        // No matches possible
-        if (buy.price < sell.price) {
-            return; // Matches only occur when buy.price >= sell.price
-        }
+        if (buy.price < sell.price) return;
 
-        // Pop from both queues
         buy_orders.pop();
         sell_orders.pop();
 
-        // Calculate the traded shares and trade price
-        int tradedShares = min(buy.shares, sell.shares); // Whichever is smaller
-        double tradePrice = sell.price; // Price is set by the seller side
+        int traded = min(buy.shares, sell.shares);
+        double price = sell.price;
 
-        // Print match details
-        cout << "TRADE: " << tradedShares 
-             << " @ " << tradePrice 
-             << " (Buy seq " << buy.seq 
-             << ", Sell seq " << sell.seq << ")\n";
+        lastPrice = price;
+        totalVolume += traded;
+        totalTrades++;
 
-        // Reinsert remaning shares to the order book
-        buy.shares -= tradedShares;
-        sell.shares -= tradedShares;
+        // simple tape (only 5 trades)
+        string t = to_string(traded) + " @ " + to_string(price);
 
-        if (buy.shares > 0) {
-            buy_orders.push(buy);
+        if (tapeCount < 5) {
+            tape[tapeCount] = t;
+            tapeCount++;
+        } else {
+            for (int i = 4; i > 0; i--)
+                tape[i] = tape[i - 1];
+            tape[0] = t;
         }
 
-        if (sell.shares > 0) {
-            sell_orders.push(sell);
-        }
+        buy.shares -= traded;
+        sell.shares -= traded;
+
+        if (buy.shares > 0) buy_orders.push(buy);
+        if (sell.shares > 0) sell_orders.push(sell);
     }
 }
 
-void LimitOrderBook::printBook() const {
-    // ANSI colors
-    const char* GREEN = "\033[32m";
-    const char* RED   = "\033[31m";
-    const char* CYAN  = "\033[36m";
-    const char* RESET = "\033[0m";
+void LimitOrderBook::printTape() const {
+    if (tapeCount == 0) {
+        cout << "  No trades yet.\n";
+        return;
+    }
 
-    // Copy queues to avoid mutating the original order book
+    for (int i = 0; i < tapeCount; i++)
+        cout << "  " << tape[i] << "\n";
+}
+
+void LimitOrderBook::printBook() const {
     auto buys = buy_orders;
     auto sells = sell_orders;
 
-    // Collect top N levels (rows) from each side
-    const int ROWS = 10;
-    vector<Order> topBuys; topBuys.reserve(ROWS);
-    vector<Order> topSells; topSells.reserve(ROWS);
+    cout << left << setw(12) << "BUY Qty" 
+         << setw(12) << "BUY Px"
+         << " | "
+         << setw(12) << "SELL Qty"
+         << setw(12) << "SELL Px" << "\n";
 
-    for (int i = 0; i < ROWS && !buys.empty(); ++i) {
-        topBuys.push_back(buys.top());
-        buys.pop();
-    }
-    for (int i = 0; i < ROWS && !sells.empty(); ++i) {
-        topSells.push_back(sells.top());
-        sells.pop();
-    }
+    cout << string(28, '-') << "+-" << string(28, '-') << "\n";
 
-    // Header
-    cout << CYAN
-        << left << setw(24) << "BIDS (Buy Orders)"
-        << " | "
-        << left << setw(24) << "ASKS (Sell Orders)" << RESET << "\n";
+    for (int i = 0; i < 10; i++) {
 
-    cout << left << setw(12) << "Shares"
-        << left << setw(12) << "Price"
-        << " | "
-        << left << setw(12) << "Shares"
-        << left << setw(12) << "Price" << "\n";
-
-    cout << string(24, '-') << "-+-" << string(24, '-') << "\n";
-
-    // Rows
-    for (int i = 0; i < ROWS; ++i) {
-        // Left side (Bids)
-        if (i < static_cast<int>(topBuys.size())) {
-            const auto& ob = topBuys[i];
-            cout << GREEN
-                 << left << setw(12) << fixed << setprecision(2) << ob.shares
-                 << left << setw(12) << ob.price
-                 << RESET;
+        if (!buys.empty()) {
+            Order b = buys.top(); buys.pop();
+            cout << setw(12) << b.shares
+                 << setw(12) << b.price;
         } else {
-            cout << left << setw(12) << "-"
-                 << left << setw(12) << "-";
+            cout << setw(12) << "-"
+                 << setw(12) << "-";
         }
 
         cout << " | ";
 
-        // Right side (Asks)
-        if (i < static_cast<int>(topSells.size())) {
-            const auto& oa = topSells[i];
-            cout << RED
-                 << left << setw(12) << fixed << setprecision(2) << oa.shares
-                 << left << setw(12) << oa.price
-                 << RESET;
+        if (!sells.empty()) {
+            Order s = sells.top(); sells.pop();
+            cout << setw(12) << s.shares
+                 << setw(12) << s.price;
         } else {
-            cout << left << setw(12) << "-"
-                 << left << setw(12) << "-";
+            cout << setw(12) << "-"
+                 << setw(12) << "-";
         }
 
         cout << "\n";

@@ -1,68 +1,68 @@
 #include <iostream>
-#include <limits> // For numeric_limits
+#include <random>
+#include <thread>
+#include <chrono>
 #include "LimitOrderBook.h"
 
 using namespace std;
 
+void addRandomOrder(LimitOrderBook& lob) {
+    static random_device rd;
+    static mt19937 gen(rd());
+
+    uniform_int_distribution<int> type(1, 2);
+    uniform_int_distribution<int> qty(1, 6000);
+    uniform_real_distribution<double> price(23.0, 25.0);
+
+    int t = type(gen);
+
+    if (t == 1)
+        lob.addBuy(price(gen), qty(gen));
+    else
+        lob.addSell(price(gen), qty(gen));
+}
+
 int main() {
 
-    LimitOrderBook island; // Initialize LimitOrderBook object
-    char cmd; // Define command variable
+    LimitOrderBook island;
 
-    // While loop
+    double prevLast = 0;
+
     while (true) {
-        // Clear screen and print dashboard
-        cout << "\033[2J\033[H"; // ANSI clear screen & move cursor home
-        cout << "--- LIMIT ORDER BOOK ---\n\n";
+
+        cout << "\033[2J\033[H"; // limpiar pantalla
+
+        cout << "=== REAL-TIME DASHBOARD ===\n\n";
+
+        cout << "Last Price: ";
+        double lp = island.getLastPrice();
+
+        if (lp == 0) {
+            cout << "N/A\n";
+        } else if (lp > prevLast) {
+            cout << "\033[32m▲ " << lp << "\033[0m\n";
+        } else if (lp < prevLast) {
+            cout << "\033[31m▼ " << lp << "\033[0m\n";
+        } else {
+            cout << lp << "\n";
+        }
+
+        prevLast = lp;
+
+        cout << "Trades:  " << island.getTrades() << "\n";
+        cout << "Volume:  " << island.getVolume() << "\n";
+        cout << "Spread:  " << island.getSpread() << "\n";
+
+        cout << "\nRecent Trades:\n";
+        island.printTape();
+
+        cout << "\nOrder Book:\n\n";
         island.printBook();
-        
-        // Display menu and command prompt
-        cout << "\nCommands:\n";
-        cout << "b: Add Buy Order\n";
-        cout << "s: Add Sell Order\n";
-        cout << "p: Print Book (snapshot)\n";
-        cout << "q: Quit\n\n";
-        cout << "Enter command: ";
-        cin >> cmd;
 
-        // Break condition
-        if (cmd == 'q') {
-            break;
-        }
+        addRandomOrder(island);
 
-        // Add sell or buy orders
-        else if (cmd == 'b' || cmd == 's') {
-            double price;
-            int qty;
-
-            cout << "Enter price: ";
-            cin >> price;
-            cout << "Enter quantity: ";
-            cin >> qty;
-
-            // Buy orders
-            if (cmd == 'b') {
-                island.addBuy(price, qty);
-            } 
-            
-            // Sell orders
-            else {
-                island.addSell(price, qty);
-            }
-
-
-        }
-
-        // Print order book
-        else if (cmd == 'p') {
-            // Print a snapshot without clearing dashboard
-            cout << "\n";
-            island.printBook();
-            cout << "\nPress Enter to continue...";
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cin.get();
-        }
+        this_thread::sleep_for(chrono::seconds(1));
     }
-    
+
     return 0;
 }
