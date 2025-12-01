@@ -1,17 +1,15 @@
-# Documentación del Proyecto: Stock Exchange Matching Engine
+# Documentación del Proyecto: Stock Exchange Matching Engine (simulador)
 
 ## Introducción
 
-Este proyecto implementa un motor de casamiento (matching engine) de un libro de órdenes continuo (CLOB, Continuous Limit Order Book) para una sola acción, operando en terminal. Un CLOB mantiene dos lados del mercado:
+Este proyecto implementa un motor de casamiento (matching engine) de un libro de órdenes límite (Limit Order Book) para una sola acción, con una interfaz de terminal que actúa como un "dashboard" en tiempo real. A diferencia de una versión interactiva, el ejecutable en `main.cpp` inyecta órdenes aleatorias en el libro cada segundo para simular actividad de mercado.
 
-- Bids (compras): ofertas a distintos precios y cantidades.
-- Asks (ventas): ofertas a distintos precios y cantidades.
+Conceptos básicos:
 
-La prioridad es por precio y, en caso de empate, por tiempo (price-time priority). El sistema da siempre preferencia al mejor precio y, si hay varias órdenes al mismo precio, ejecuta primero la que llegó más temprano. El proyecto ofrece:
+- Bids (compras): órdenes límite para comprar a distintos precios y cantidades.
+- Asks (ventas): órdenes límite para vender a distintos precios y cantidades.
 
-- Inserción manual de órdenes (buy/sell) por menú.
-- Emparejamiento automático al insertar una orden nueva.
-- Una vista tipo “dashboard” en tiempo real en la terminal que muestra el depth (top N niveles) de bids y asks en colores.
+La prioridad del libro es por precio y, a igualdad de precio, por tiempo (price-time priority): mejor precio primero; a igual precio, la orden con `seq` menor (más antigua) se prioriza.
 
 ## Investigación sobre Limit Order Books
 
@@ -21,9 +19,9 @@ Un Limit Order Book es la estructura central de muchos mercados electrónicos. C
 - Mejor bid: mayor precio de compra disponible en el libro.
 - Mejor ask: menor precio de venta disponible en el libro.
 - Spread: diferencia entre mejor ask y mejor bid.
-- Prioridad precio-tiempo: primero mejor precio; a igual precio, se ejecuta la orden con timestamp más antiguo.
+- Prioridad precio-tiempo: primero mejor precio; a igual precio, se ejecuta la orden con timestamp/`seq` más antiguo.
 
-En la práctica, los libros se actualizan continuamente, mostrando profundidad por niveles de precio. El artículo “Island’s limit order book” (referido en el README) es un buen ejemplo de la interfaz esperada, trasladada aquí a un entorno de terminal.
+En la práctica, los libros se actualizan continuamente, mostrando profundidad por niveles de precio. El código de este repositorio implementa una versión simplificada que facilita su estudio.
 
 ## Diseño y Arquitectura
 
@@ -31,112 +29,83 @@ En la práctica, los libros se actualizan continuamente, mostrando profundidad p
 
 Estructura `Order` (ver `Order.h`):
 
-- price (double): precio límite de la orden.
-- shares (int): cantidad de acciones.
-- seq (int): secuencia incremental global para romper empates por tiempo.
-- counter (static int): contador global que asigna `seq` al construir una orden.
+- `price` (double): precio límite de la orden.
+- `shares` (int): cantidad de acciones.
+- `seq` (int): secuencia incremental global para romper empates por tiempo.
+- `counter` (static int): contador global que asigna `seq` al construir una orden (definido en `Order.cpp`).
 
-Suposiciones sencillas: los inputs son válidos (cantidades positivas, precio positivo). Se puede extender con validaciones si es necesario.
+Suposiciones sencillas: los inputs generados por el simulador son válidos. Se puede extender con validaciones si es necesario.
 
 ### Estructuras de datos
 
 Se usan `std::priority_queue<Order, vector<Order>, Comparator>` para ambos lados:
 
-- Cola de compras (`buy_orders`) con `BuyComparator`:
-	- Ordena por mayor precio primero; a igualdad de precio, menor `seq` primero (más antiguo).
-- Cola de ventas (`sell_orders`) con `SellComparator`:
-	- Ordena por menor precio primero; a igualdad de precio, menor `seq` primero (más antiguo).
+- Cola de compras (`buy_orders`) con `BuyComparator`: ordena por mayor precio primero; a igualdad de precio, menor `seq` primero (más antiguo).
+- Cola de ventas (`sell_orders`) con `SellComparator`: ordena por menor precio primero; a igualdad de precio, menor `seq` primero (más antiguo).
 
-Esto implementa la prioridad precio-tiempo de forma eficiente para siempre acceder al “top-of-book”.
+Esto implementa la prioridad precio-tiempo de forma eficiente para acceder siempre al top-of-book.
 
 ### Contrato de matching
 
 - Condición de cruce: existe trade si `bestBuy.price >= bestSell.price`.
 - Cantidad ejecutada: `min(buy.shares, sell.shares)`.
-- Precio de ejecución: se fija al lado pasivo (aquí usamos `sell.price`).
-- Órdenes residuales: si sobra cantidad en buy o sell, se reinsertan con la cantidad restante conservando su `seq` original.
+- Precio de ejecución: en la implementación actual se toma `sell.price` (lado pasivo).
+- Órdenes residuales: si queda cantidad en buy o sell tras el trade, la orden residual se vuelve a insertar manteniendo su `seq`.
 
 Diagrama de flujo (simplificado):
 
 ```
-Nueva orden -> addBuy/addSell -> match()
-	while bestBuy && bestSell:
-		if bestBuy.price < bestSell.price: parar
-		traded = min(bestBuy.qty, bestSell.qty)
-		ejecutar(traded, precio = bestSell.price)
-		actualizar remanentes
-		reinsertar si qty > 0
+Nueva orden (aleatoria en runtime) -> addBuy/addSell -> match()
+    while bestBuy && bestSell:
+        if bestBuy.price < bestSell.price: break
+        traded = min(buy.shares, sell.shares)
+        registrar trade: "<traded> @ <price>" (price = sell.price)
+        actualizar cantidades y reinsertar si queda remanente
 ```
-
-Complejidad aproximada:
-
-- Inserción en cola de prioridad: O(log N)
-- Consulta del mejor nivel: O(1)
-- Matcheo: pops/reinserciones O(log N) por cada orden afectada.
 
 ### Interfaz en tiempo real (terminal)
 
-La función `printBook()` (ver `LimitOrderBook.cpp`) genera una tabla con hasta 10 niveles por lado usando copias temporales de las colas para no mutar el estado. Se emplean códigos ANSI para colores:
+El programa muestra un dashboard que se actualiza cada segundo y contiene:
 
-- Bids en verde (mejor precio arriba).
-- Asks en rojo (mejor precio arriba).
-- Encabezados en cian.
+- Último precio (`Last Price`) con un indicador de movimiento (▲ en verde si sube, ▼ en rojo si baja).
+- Estadísticas: número total de trades (`Trades`), volumen total (`Volume`) y spread actual (`Spread`).
+- Lista de "Recent Trades" (tape) con hasta 5 entradas, formato `"<qty> @ <price>"`.
+- Snapshot del libro de órdenes: `printBook()` muestra hasta 10 niveles por lado (columnas `BUY Qty | BUY Px  | SELL Qty | SELL Px`).
 
-El `main.cpp` limpia la pantalla en cada ciclo y dibuja el libro antes de solicitar el siguiente comando, logrando un efecto de dashboard con entrada manual.
+Notas de implementación:
+
+- `main.cpp` limpia la pantalla y re-dibuja el dashboard en un bucle infinito; la versión actual no solicita entrada manual.
+- La función `printBook()` no aplica colorización por lado; sólo `main.cpp` usa códigos ANSI para indicar la dirección del último precio.
 
 ### Decisiones y limitaciones
 
 - Simplicidad vs. fidelidad: se prioriza un diseño claro con `priority_queue` y comparadores personalizados.
-- Un solo símbolo: el README menciona “dos colas por acción”. Aquí manejamos una acción; puede extenderse con `unordered_map<string, LimitOrderBook>`.
-- Entrada manual: por requerimiento del usuario, no se generan órdenes automáticas; sin embargo, la UI se refresca y permite observar el libro tras cada operación.
+- Un solo símbolo: el proyecto maneja una única instancia de `LimitOrderBook`; puede extenderse con `unordered_map<string, LimitOrderBook>` para múltiples símbolos.
+- Entrada automática: el ejecutable añade órdenes aleatorias en cada iteración; para entrada manual hay que modificar `main.cpp` o proporcionar una versión alternativa.
 
 ## Implementación
 
 ### Clases y funciones clave
 
 - `class Order` (`Order.h` / `Order.cpp`):
-	- Constructor asigna `price`, `shares` y `seq = counter++`.
-	- `static int counter` inicializado en 0 al inicio de la ejecución.
+    - Campos: `price`, `shares`, `seq`.
+    - Constructor: asigna `seq = counter++`.
 
 - Comparadores (`Order.h`):
-	- `BuyComparator`: mayor `price` primero; a igualdad, menor `seq`.
-	- `SellComparator`: menor `price` primero; a igualdad, menor `seq`.
+    - `BuyComparator`: mayor `price` primero; a igualdad, menor `seq`.
+    - `SellComparator`: menor `price` primero; a igualdad, menor `seq`.
 
 - `class LimitOrderBook` (`LimitOrderBook.h` / `.cpp`):
-	- `addBuy(price, qty)` y `addSell(price, qty)`: insertan y llaman a `match()`.
-	- `match()`: ejecuta mientras haya cruce; maneja fills parciales y reinserta remanentes; imprime los trades en formato `TRADE: <qty> @ <price> (Buy seq X, Sell seq Y)`.
-	- `printBook() const`: muestra los top 10 niveles por lado, con columnas `Price | Qty` y colores ANSI.
+    - `addBuy(price, qty)` y `addSell(price, qty)`: insertan y llaman a `match()`.
+    - `match()`: ejecuta trades mientras haya cruce; actualiza `lastPrice`, `totalVolume`, `totalTrades` y registra una entrada en la cinta (`tape`) con el formato `"<qty> @ <price>"`. La cinta guarda hasta 5 últimas entradas.
+    - `printBook() const`: muestra snapshot del top-of-book (hasta 10 niveles por lado) sin mutar el estado.
 
 - `main.cpp`:
-	- Bucle principal: limpia pantalla, dibuja el libro, muestra menú y lee comandos.
-	- Comandos: `b` (buy), `s` (sell), `p` (snapshot), `q` (salir).
+    - Bucle principal: limpia pantalla, muestra estadísticas, imprime tape y libro, y añade una orden aleatoria cada segundo mediante `addRandomOrder()`.
 
-### Fragmentos representativos (snippets)
+## Uso y comportamiento
 
-Comparadores (concepto):
-
-```
-BuyComparator:  if (a.price != b.price) return a.price < b.price; // mayor primero
-								else return a.seq > b.seq; // más antiguo primero
-
-SellComparator: if (a.price != b.price) return a.price > b.price; // menor primero
-								else return a.seq > b.seq; // más antiguo primero
-```
-
-Lógica de trade (concepto):
-
-```
-while bestBuy && bestSell:
-	if bestBuy.price < bestSell.price: break
-	traded = min(bestBuy.qty, bestSell.qty)
-	tradePrice = bestSell.price
-	imprimir(TRADE, traded, tradePrice)
-	actualizar cantidades y reinsertar si queda remanente
-```
-
-## Uso y comandos
-
-Compilación (también en README):
+Compilación:
 
 ```
 g++ -std=c++17 -Wall -Wextra -pedantic main.cpp Order.cpp LimitOrderBook.cpp -o orderbook
@@ -148,37 +117,26 @@ Ejecución:
 ./orderbook
 ```
 
-Comandos dentro del programa:
+Comportamiento en runtime:
 
-- `b`: agregar orden de compra (se solicita precio y cantidad).
-- `s`: agregar orden de venta (se solicita precio y cantidad).
-- `p`: imprimir snapshot estático y pausar hasta Enter.
-- `q`: salir.
+- El programa corre en bucle infinito y, cada segundo, genera una orden aleatoria (compra o venta) con precio uniformemente aleatorio entre `23.0` y `25.0` y cantidad entre `1` y `6000`.
+- La UI no espera comandos del usuario en la versión actual; para detener la ejecución se debe interrumpir el proceso (Ctrl+C) o modificar `main.cpp`.
 
-## Pruebas manuales sugeridas
+Si quieres cambiar la entrada para que sea manual (menu interactivo), puedo ayudarte a adaptar `main.cpp` para leer comandos `b`/`s`/`p`/`q` en lugar de inyectar órdenes aleatorias.
 
-1) Insertar una compra que NO cruce:
-	 - Buy: 100.00 x 10
-	 - Sell: 101.00 x 5
-	 - Resultado: no hay trade; bestBid=100.00, bestAsk=101.00.
+## Pruebas sugeridas
 
-2) Insertar una venta que SÍ cruce parcial:
-	 - Ventas: Sell 99.50 x 3 frente a Buy 100.00 x 10
-	 - Resultado: TRADE de 3 @ 99.50; queda Buy 100.00 x 7.
+Dado que la versión actual genera órdenes aleatorias, puedes validar comportamientos observando el dashboard durante unos segundos y comprobando:
 
-3) Empate por precio (mismo nivel) y prioridad por tiempo:
-	 - Buy A: 100.00 x 5 (seq menor)
-	 - Buy B: 100.00 x 5 (seq mayor)
-	 - Sell: 99.00 x 8
-	 - Resultado: se ejecuta primero Buy A por 5 y luego Buy B por 3.
+1) Que `getTrades()` y `getVolume()` aumentan cuando ocurren crosses.
+2) Que `Last Price` se actualiza con el precio de las ventas que cruzan (`sell.price`).
+3) Que la cinta (`Recent Trades`) muestra entradas con el formato `"<qty> @ <price>"` y guarda hasta 5 trades.
+
+Si prefieres pruebas determinísticas, puedo preparar un `main_manual.cpp` que inserte órdenes conocidas en secuencia y así verificar casos concretos (cruce total, cruce parcial y prioridad por tiempo).
 
 ## Conclusiones y Aprendizajes
 
-- **Ricardo**: 
+La práctica permitió construir un simulador sencillo de matching engine que usa `std::priority_queue` con comparadores personalizados para mantener prioridad precio–tiempo y gestionar fills parciales correctamente. Además se añadió una vista en terminal que facilita observar la dinámica del libro y los trades. La implementación es intencionalmente simple y puede extenderse para manejar múltiples símbolos, entrada manual o persistencia de eventos.
 
-En este projecto aprendí a simular un *matching engine* para un libro de órdenes continua, utilizando como principal característica *priority queues*. Para hacer el programa más efectivo, también aprendí de ciertas "costumbres" para organizar mejor los archivos tanto `.cpp` como `.h`. Por último, aprendí qué son los libros de órdenes y cómo funcionan en el mundo del intercambio de bolsas. Concluyo, que esta práctica fue una buena manera para visualizar las colas con prioridad ya que las órdenes de intercambio se organizan de acuerdo a alguna prioridad, así garantizando el funcionamiento correcto de los libros de órdenes.
 
-- **Isaac**:
-
-En este proyecto aprendí de forma práctica cómo funciona un limit order book con prioridad precio–tiempo. Implementamos el matching con `std::priority_queue` y comparadores personalizados, lo que nos obligó a elegir y entender bien las estructuras de datos necesarias y a manejar fills parciales sin romper el orden temporal. También construimos un dashboard en la terminal con colores para visualizar en tiempo real bids y asks, algo que no había hecho antes. Me llevo la satisfacción de haber simulado, con código simple y claro, el funcionamiento de un CLOB real.
 
