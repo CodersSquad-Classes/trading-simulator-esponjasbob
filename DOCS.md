@@ -1,4 +1,4 @@
-# Documentación del Proyecto: Stock Exchange Matching Engine
+# Evidence 1.7.1 - Trading Simulator
 
 Este proyecto es un simulador sencillo de un **Limit Order Book (LOB)** para una sola acción. Todo corre en la terminal y cada segundo se generan órdenes aleatorias para imitar un mercado en vivo.
 
