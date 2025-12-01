@@ -70,11 +70,16 @@ void LimitOrderBook::printBook() const {
     auto buys = buy_orders;
     auto sells = sell_orders;
 
-    cout << left << setw(12) << "BUY Qty" 
+    const char* G = "\033[32m"; // green for buys
+    const char* R = "\033[31m"; // red for sells
+    const char* C = "\033[36m"; // cyan for header
+    const char* RESET = "\033[0m";
+
+    cout << C << left << setw(12) << "BUY Qty" 
          << setw(12) << "BUY Px"
          << " | "
          << setw(12) << "SELL Qty"
-         << setw(12) << "SELL Px" << "\n";
+         << setw(12) << "SELL Px" << RESET << "\n";
 
     cout << string(28, '-') << "+-" << string(28, '-') << "\n";
 
@@ -82,8 +87,8 @@ void LimitOrderBook::printBook() const {
 
         if (!buys.empty()) {
             Order b = buys.top(); buys.pop();
-            cout << setw(12) << b.shares
-                 << setw(12) << b.price;
+            cout << G << setw(12) << b.shares
+                 << setw(12) << b.price << RESET;
         } else {
             cout << setw(12) << "-"
                  << setw(12) << "-";
@@ -93,8 +98,8 @@ void LimitOrderBook::printBook() const {
 
         if (!sells.empty()) {
             Order s = sells.top(); sells.pop();
-            cout << setw(12) << s.shares
-                 << setw(12) << s.price;
+            cout << R << setw(12) << s.shares
+                 << setw(12) << s.price << RESET;
         } else {
             cout << setw(12) << "-"
                  << setw(12) << "-";
